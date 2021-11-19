@@ -7,7 +7,7 @@
 # To use the script:
 #  1. Convert pre-2008 evt to evtx using later OS. (Please note, pre-2008 does not contain all 16 data fields. So some pivot tables might not display correctly.)
 
-# LdapEventReader.ps1 v2.12 11/18/2021(added top user tab #6)
+# LdapEventReader.ps1 v2.12 11/18/2021(added top user & attrib tabs)
 	#		Steps: 
 	#   	1. Copy Directory Service EVTX from target DC(s) to same directory as this script.
 	#     		Tip: When copying Directory Service EVTX, filter on event 1644 to reduce EVTX size for quicker transfer. 
