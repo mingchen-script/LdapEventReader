@@ -7,7 +7,7 @@
 # To use the script:
 #  1. Convert pre-2008 evt to evtx using later OS. (Please note, pre-2008 does not contain all 16 data fields. So some pivot tables might not display correctly.)
 
-# LdapEventReader.ps1 v2.12 11/18/2021(added top user tab #6)
+# LdapEventReader.ps1 v2.12 11/18/2021(added top user & attrib tab)
 	#		Steps: 
 	#   	1. Copy Directory Service EVTX from target DC(s) to same directory as this script.
 	#     		Tip: When copying Directory Service EVTX, filter on event 1644 to reduce EVTX size for quicker transfer. 
@@ -247,9 +247,19 @@ If (Test-Path $OutFile1) {
         Set-PivotField -PivotField $Sheet6.PivotTables("PivotTable6").PivotFields("ClientIP") -Orientation $xlDataField -NumberFormat  $fmtNumber -Name "Search Count" 
         Set-PivotField -PivotField $Sheet6.PivotTables("PivotTable6").PivotFields("SearchTimeMS") -Orientation $xlDataField -NumberFormat  $fmtPercent -Calculation $xlPercentOfTotal -Name "%GrandTotal"
       Set-TableFormats -Sheet $Sheet6 -Table "PivotTable6" -ColumnWidth (70,21,12,19) -label 'User grouping' -Name '6.Top User IP Filter' -SortColumn 4 -Hide ('Filter','ClientIP','User') -ColumnHiLite ('B','D') -ColorBar 'D' -ColorScale 'D'
+    #----Pivot Table 7-------------------------------------------------------------------
+    Write-Progress -Activity "Creating Top Filter Pivot table" -PercentComplete (($Step++/$TotalSteps)*100)
+    $Sheet7 = $Excel.Workbooks[1].Worksheets.add()
+    $null = ($Excel.Workbooks[1].PivotCaches().Create(1,"$OutTitle1!R1C1:R$($Sheet0.UsedRange.Rows.count)C$($Sheet0.UsedRange.Columns.count)",5)).CreatePivotTable("Sheet7!R1C1")
+      Set-PivotPageRows -Sheet $Sheet7 -PivotTable "PivotTable7" -Page "LDAPServer" -Rows ("AttributesPreventingOptimization","Filter","ClientIP")
+        Set-PivotField -PivotField $Sheet7.PivotTables("PivotTable7").PivotFields("SearchTimeMS") -Orientation $xlDataField -NumberFormat  $fmtNumber -Function $xlSum -Name "Total SearchTime" 
+        Set-PivotField -PivotField $Sheet7.PivotTables("PivotTable7").PivotFields("ClientIP") -Orientation $xlDataField -NumberFormat  $fmtNumber -Name "Search Count" 
+        Set-PivotField -PivotField $Sheet7.PivotTables("PivotTable7").PivotFields("SearchTimeMS") -Orientation $xlDataField -NumberFormat  $fmtPercent -Calculation $xlPercentOfTotal -Name "%GrandTotal"
+      Set-TableFormats -Sheet $Sheet7 -Table "PivotTable7" -ColumnWidth (70,21,12,19) -label 'Attributes Preventing Optimization' -Name '7.Attributes Need Optimization' -SortColumn 4 -Hide ('ClientIP','Filter','AttributesPreventingOptimization') -ColumnHiLite ('B','D') -ColorBar 'D' -ColorScale 'D'
     #---General Tab Operations-------------------------------------------------------------------
     ($Sheet1,$Sheet2,$Sheet3).ForEach{$_.Tab.ColorIndex = 35}
-    ($Sheet4,$Sheet5,$Sheet6).ForEach{$_.Tab.ColorIndex = 36}
+    ($Sheet4,$Sheet5).ForEach{$_.Tab.ColorIndex = 36}
+    ($Sheet6,$Sheet7).ForEach{$_.Tab.ColorIndex = 37}
       $WorkSheetNames = New-Object System.Collections.ArrayList  #---Sort by sheetName-
       foreach($WorkSheet in $Excel.Workbooks[1].Worksheets) { $null = $WorkSheetNames.add($WorkSheet.Name) }
         $null = $WorkSheetNames.Sort()
