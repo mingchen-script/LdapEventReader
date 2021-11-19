@@ -7,7 +7,7 @@
 # To use the script:
 #  1. Convert pre-2008 evt to evtx using later OS. (Please note, pre-2008 does not contain all 16 data fields. So some pivot tables might not display correctly.)
 
-# LdapEventReader.ps1 v2.11 11/29(added $g_maxThreads jobs)
+# LdapEventReader.ps1 v2.12 11/18/2021(added top user tab #6)
 	#		Steps: 
 	#   	1. Copy Directory Service EVTX from target DC(s) to same directory as this script.
 	#     		Tip: When copying Directory Service EVTX, filter on event 1644 to reduce EVTX size for quicker transfer. 
@@ -97,10 +97,11 @@ function Export-1644CSV { param ( $InFile = $null, $OutFile = $null, $StartTime 
       $1644 | Add-Member -MemberType NoteProperty -Name DirtyPagesModified -force -Value $_.Properties[13].Value
       $1644 | Add-Member -MemberType NoteProperty -Name SearchTimeMS -force -Value $_.Properties[14].Value
       $1644 | Add-Member -MemberType NoteProperty -Name AttributesPreventingOptimization -force -Value $_.Properties[15].Value	
+      $1644 | Add-Member -MemberType NoteProperty -Name User -force -Value $_.Properties[16].Value	
       If ($null -eq $Header) {
-        $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS | Export-Csv $OutFile -NoTypeInformation
+        $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS,AttributesPreventingOptimization,User | Export-Csv $OutFile -NoTypeInformation
         $Header = $True
-      } else { $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS | Export-Csv $OutFile -NoTypeInformation -Append }
+      } else { $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS,AttributesPreventingOptimization,User | Export-Csv $OutFile -NoTypeInformation -Append }
     })
   } else {  
     # Write-Host '    No event 1644 found in' $InFile  -ForegroundColor Red 
@@ -133,10 +134,11 @@ $Export1644CSV = {
         $1644 | Add-Member -MemberType NoteProperty -Name DirtyPagesModified -force -Value $_.Properties[13].Value
         $1644 | Add-Member -MemberType NoteProperty -Name SearchTimeMS -force -Value $_.Properties[14].Value
         $1644 | Add-Member -MemberType NoteProperty -Name AttributesPreventingOptimization -force -Value $_.Properties[15].Value	
+        $1644 | Add-Member -MemberType NoteProperty -Name User -force -Value $_.Properties[16].Value	
         If ($null -eq $Header) {
-          $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS | Export-Csv $OutFile -NoTypeInformation
+          $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS,AttributesPreventingOptimization,User | Export-Csv $OutFile -NoTypeInformation
           $Header = $True
-        } else { $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS | Export-Csv $OutFile -NoTypeInformation -Append }
+        } else { $1644 | Select-Object -Property LDAPServer,TimeGenerated,StartingNode,Filter,VisitedEntries,ReturnedEntries,ClientIP,ClientPort,SearchScope,AttributeSelection,ServerControls,UsedIndexes,PagesReferenced,PagesReadFromDisk,PagesPreReadFromDisk,CleanPagesModified,DirtyPagesModified,SearchTimeMS,AttributesPreventingOptimization,User | Export-Csv $OutFile -NoTypeInformation -Append }
       })
     } else {  
       # Write-Host '    No event 1644 found in' $InFile  -ForegroundColor Red 
@@ -236,9 +238,18 @@ If (Test-Path $OutFile1) {
         Set-PivotField -PivotField $Sheet5.PivotTables("PivotTable5").PivotFields("ClientIP") -Orientation $xlDataField -NumberFormat  $fmtNumber -Name "Search Count" 
         Set-PivotField -PivotField $Sheet5.PivotTables("PivotTable5").PivotFields("SearchTimeMS") -Orientation $xlDataField -NumberFormat  $fmtPercent -Calculation $xlPercentOfTotal -Name "%GrandTotal"
       Set-TableFormats -Sheet $Sheet5 -Table "PivotTable5" -ColumnWidth (70,21,12,19) -label 'IP grouping' -Name '5.TopTime Filter' -SortColumn 4 -Hide ('ClientIP','Filter') -ColumnHiLite ('B','D') -ColorBar 'D' -ColorScale 'D'
+    #----Pivot Table 6-------------------------------------------------------------------
+    Write-Progress -Activity "Creating Top Users Pivot table" -PercentComplete (($Step++/$TotalSteps)*100)
+    $Sheet6 = $Excel.Workbooks[1].Worksheets.add()
+    $null = ($Excel.Workbooks[1].PivotCaches().Create(1,"$OutTitle1!R1C1:R$($Sheet0.UsedRange.Rows.count)C$($Sheet0.UsedRange.Columns.count)",5)).CreatePivotTable("Sheet6!R1C1")
+      Set-PivotPageRows -Sheet $Sheet6 -PivotTable "PivotTable6" -Page "LDAPServer" -Rows ("User","ClientIP","Filter")
+        Set-PivotField -PivotField $Sheet6.PivotTables("PivotTable6").PivotFields("SearchTimeMS") -Orientation $xlDataField -NumberFormat  $fmtNumber -Function $xlSum -Name "Total SearchTime" 
+        Set-PivotField -PivotField $Sheet6.PivotTables("PivotTable6").PivotFields("ClientIP") -Orientation $xlDataField -NumberFormat  $fmtNumber -Name "Search Count" 
+        Set-PivotField -PivotField $Sheet6.PivotTables("PivotTable6").PivotFields("SearchTimeMS") -Orientation $xlDataField -NumberFormat  $fmtPercent -Calculation $xlPercentOfTotal -Name "%GrandTotal"
+      Set-TableFormats -Sheet $Sheet6 -Table "PivotTable6" -ColumnWidth (70,21,12,19) -label 'User grouping' -Name '6.Top User IP Filter' -SortColumn 4 -Hide ('Filter','ClientIP','User') -ColumnHiLite ('B','D') -ColorBar 'D' -ColorScale 'D'
     #---General Tab Operations-------------------------------------------------------------------
     ($Sheet1,$Sheet2,$Sheet3).ForEach{$_.Tab.ColorIndex = 35}
-    ($Sheet4,$Sheet5).ForEach{$_.Tab.ColorIndex = 36}
+    ($Sheet4,$Sheet5,$Sheet6).ForEach{$_.Tab.ColorIndex = 36}
       $WorkSheetNames = New-Object System.Collections.ArrayList  #---Sort by sheetName-
       foreach($WorkSheet in $Excel.Workbooks[1].Worksheets) { $null = $WorkSheetNames.add($WorkSheet.Name) }
         $null = $WorkSheetNames.Sort()
