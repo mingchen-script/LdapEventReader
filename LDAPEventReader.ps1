@@ -173,10 +173,8 @@ $StartTime = ([datetime]$g_StartTime).ToUniversalTime().ToString("s")
 #---------Find logs's time range Info----------
   $OldestTimeStamp = $NewestTimeStamp = $LogsInfo = $null
   (Get-ChildItem -Path $ScriptPath\* -include ('*.csv') ).foreach({
-
     $FirstTimeStamp = [DateTime]((Get-Content $_ -Tail 1) -split ',' | select -skip 1 -first 1 | ForEach { $_ -replace '"',$null})
     $LastTimeStamp = [DateTime]((Get-Content $_ -Head 2) -split ',' | select -skip 21 -first 1 | ForEach { $_ -replace '"',$null})
-
       if ($OldestTimeStamp -eq $null) { $OldestTimeStamp = $NewestTimeStamp = $FirstTimeStamp }
       If ($OldestTimeStamp -gt $FirstTimeStamp) {$OldestTimeStamp = $FirstTimeStamp }
       If ($NewestTimeStamp -lt $LastTimeStamp) {$NewestTimeStamp = $LastTimeStamp }
@@ -184,10 +182,10 @@ $StartTime = ([datetime]$g_StartTime).ToUniversalTime().ToString("s")
   })
     $LogTimeRange = ($NewestTimeStamp-$OldestTimeStamp)
     $LogRangeText += ("Script info:`n   https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/event1644reader-analyze-ldap-query-performance`n") 
-    $LogRangeText += ("   Github latest download:`n      https://github.com/mingchen-script/LdapEventReader`n`n") 
+    $LogRangeText += ("Github latest download:`n   https://github.com/mingchen-script/LdapEventReader`n`n") 
     $LogRangeText += ("AD Schema:`n   https://docs.microsoft.com/en-us/windows/win32/adschema/active-directory-schema`n") 
     $LogRangeText += ("AD Attributes:`n   https://docs.microsoft.com/en-us/windows/win32/adschema/attributes`n`n") 
-    $LogRangeText += ("#-------------------------------`n  [Overall EventRange]: "+$OldestTimeStamp+' ~ '+$NewestTimeStamp+"`n  [Overall TimeRange]: "+$LogTimeRange.Days+' Days '+$LogTimeRange.Hours+' Hours '+$LogTimeRange.Minutes+' Minutes '+$LogTimeRange.Seconds+" Seconds `n`n") + $LogsInfo 
+    $LogRangeText += ("#-------------------------------`n  [Overall EventRange]: "+$OldestTimeStamp+' ~ '+$NewestTimeStamp+"`n  [Overall TimeRange]: "+$LogTimeRange.Days+' Days '+$LogTimeRange.Hours+' Hours '+$LogTimeRange.Minutes+' Minutes '+$LogTimeRange.Seconds+" Seconds `n`n") + ($LogsInfo -replace "$TimeStamp-Temp1644-")
 #-----Combine CSV(s) into one for faster Excel import
   $OutTitle1 = 'LDAP searches'
   $OutFile1 = "$ScriptPath\$TimeStamp-$OutTitle1.csv"
