@@ -7,12 +7,17 @@
 # To use the script:
 #  1. Convert pre-2008 evt to evtx using later OS. (Please note, pre-2008 does not contain all 16 data fields. So some pivot tables might not display correctly.)
 
-# LdapEventReader.ps1 v2.13 12/3/2021(added Logs info on each tables)
+# LdapEventReader.ps1 v2.14 12/4/2021(timerange + event numbers in [More Info])
 	#		Steps: 
 	#   	1. Copy Directory Service EVTX from target DC(s) to same directory as this script.
 	#     		Tip: When copying Directory Service EVTX, filter on event 1644 to reduce EVTX size for quicker transfer. 
 	#					Note: Script will process all *.EVTX in script directory when run.
 	#   	2. Run script
+
+# Script info:    https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/event1644reader-analyze-ldap-query-performance
+#   Latest:       https://github.com/mingchen-script/LdapEventReader
+# AD Schema:      https://docs.microsoft.com/en-us/windows/win32/adschema/active-directory-schema
+# AD Attributes:  https://docs.microsoft.com/en-us/windows/win32/adschema/attributes
 
 #------Script variables block, modify to fit your needs ---------------------------------------------------------------------
 $g_StartTime = '2010/01/12  09:53'    # Earliest 1644 event to export, in the form of M/d/yyyy H:m:s tt' example: '3/19/2010 1:11:49 AM'. Use this to filter events after changes.
@@ -173,12 +178,12 @@ $StartTime = ([datetime]$g_StartTime).ToUniversalTime().ToString("s")
 #---------Find logs's time range Info----------
   $OldestTimeStamp = $NewestTimeStamp = $LogsInfo = $null
   (Get-ChildItem -Path $ScriptPath\* -include ('*.csv') ).foreach({
-    $FirstTimeStamp = [DateTime]((Get-Content $_ -Tail 1) -split ',' | select -skip 1 -first 1 | ForEach { $_ -replace '"',$null})
-    $LastTimeStamp = [DateTime]((Get-Content $_ -Head 2) -split ',' | select -skip 21 -first 1 | ForEach { $_ -replace '"',$null})
+    $FirstTimeStamp = [DateTime]((Get-Content $_ -Tail 1) -split ',' | Select-Object -skip 1 -first 1 | ForEach-Object { $_ -replace '"',$null})
+    $LastTimeStamp = [DateTime]((Get-Content $_ -Head 2) -split ',' | Select-Object -skip 21 -first 1 | ForEach-Object { $_ -replace '"',$null})
       if ($OldestTimeStamp -eq $null) { $OldestTimeStamp = $NewestTimeStamp = $FirstTimeStamp }
       If ($OldestTimeStamp -gt $FirstTimeStamp) {$OldestTimeStamp = $FirstTimeStamp }
       If ($NewestTimeStamp -lt $LastTimeStamp) {$NewestTimeStamp = $LastTimeStamp }
-    $LogsInfo = $LogsInfo + ($_.name+"`n   "+$FirstTimeStamp+' ~ '+$LastTimeStamp+"`t   Log range = "+($LastTimeStamp-$FirstTimeStamp).Totalseconds+" Seconds`n`n")
+      $LogsInfo = $LogsInfo + ($_.name+"`n   "+$FirstTimeStamp+' ~ '+$LastTimeStamp+"`t   Log range = "+($LastTimeStamp-$FirstTimeStamp).Days+" Days "+($LastTimeStamp-$FirstTimeStamp).Hours+" Hours "+($LastTimeStamp-$FirstTimeStamp).Minutes+" min "+($LastTimeStamp-$FirstTimeStamp).Seconds+" sec. ("+((Get-Content $_ | Measure-Object -line).lines-1)+" Events.)`n`n")
   })
     $LogTimeRange = ($NewestTimeStamp-$OldestTimeStamp)
     $LogRangeText += ("Script info:`n   https://docs.microsoft.com/en-us/troubleshoot/windows-server/identity/event1644reader-analyze-ldap-query-performance`n") 
